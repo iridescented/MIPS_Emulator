@@ -4,6 +4,10 @@
         "bitset": "cpp",
         "ostream": "cpp",
         "iostream": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "xstring": "cpp",
+        "vector": "cpp",
+        "fstream": "cpp",
+        "list": "cpp"
     }
 }

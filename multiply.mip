@@ -1,0 +1,10 @@
+mult:
+add   $v1, $0, $0   # init to 0
+loopstart:
+beq   $a0, $0, fin
+add   $v1, $v1, $a1
+addi  $a0, $a0, -1
+j     loopstart
+fin:           
+jr    $ra
+

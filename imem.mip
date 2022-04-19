@@ -1,0 +1,25 @@
+.data
+	n: .word 1
+	
+.text
+	li $t0, 1  %23n
+	li $t1, 1  %23count
+	
+	mainLoop:
+		beq  $t0, 201, exitMainLoop
+		j subLoop
+	
+	
+	subLoop:
+		beq $t1, 0, exitSubLoop
+		add $t1, $t0, $zero
+		add $t3, $t3, $t0
+		subi $t1, $t1, 1
+
+		j subLoop
+	
+	exitSubLoop:
+		addi  $t0, $t0, 1
+		j mainLoop
+	 
+	exitMainLoop: 

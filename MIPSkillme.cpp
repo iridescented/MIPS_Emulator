@@ -9,8 +9,14 @@ Project: MIPS Processor
 #include <vector>
 #include <bitset>
 #include <fstream>
+#include <unordered_map>
 using namespace std;
 #define MemSize 1000
+
+unordered_map<string, bitset<6>> opcode =
+    {
+        {"add", bitset<6>(20)},
+        {"sub", bitset<6>(15)}};
 
 struct F_Struct
 {                  //! Fetch Structure
@@ -196,7 +202,7 @@ int main()
     stateStruct State, New_State;
     //! Initialization
     ClearFiles();
-    bool active = 1;
+    bool active = 0;
     bitset<32> Ins = bitset<32>(0);
     InstructionMemory mainInsMem;
     New_State = State = initialization("State");
@@ -236,8 +242,8 @@ int main()
             New_State.D.Ins_Mem = mainInsMem.readIM(State.F.PC);
             New_State.F.PC = State.F.PC.to_ulong() + 4;
             //! INCLUDE END STATE
-            if (New_State.D.Ins_Mem == bitset<32>(4294967296))
-            { // 2^32
+            if (New_State.D.Ins_Mem == bitset<32>(4294967295)) // 2^32
+            {                                                  // 2^32
                 New_State.F.PC = State.F.PC;
                 New_State.F.active = New_State.D.active = 0;
             }

@@ -3,10 +3,14 @@
 #include <bitset>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 using namespace std;
 
 #define memorysize 1000
-bool debug = 1; // Enables Debug push
+bool mode = 1;  //* 0-binary mode, 1-assembly mode
+bool debug = 1; //* Enables Debug push
+string imemfile = "imem.txt";
+string dmemfile = "dmem.txt";
 
 class IF
 { //! Fetch Class
@@ -35,6 +39,10 @@ public:
             cout << "\nOutputTest.txt failed to open!";
         file.close();
     }
+    bitset<32> PCOut()
+    {
+        return PC;
+    }
 
 private:
     bitset<32> PC; //* Program Counter
@@ -43,11 +51,11 @@ struct IDControl
 { //? Control Structure to read opcode
     bool RegDst, Jump, Branch, MemRead, MemToReg, ALUOp, MemWrite, ALUSrc, RegWrite;
 };
-class ID
-{ //! Decode Class
+class BaseID
+{ //! Base Class
 public:
     bool op; //* Operational state
-    ID()
+    BaseID()
     {
         Ctrl.RegDst = Ctrl.Jump = Ctrl.Branch = Ctrl.MemRead = Ctrl.MemToReg = Ctrl.ALUOp = Ctrl.MemWrite = Ctrl.ALUSrc = Ctrl.RegWrite = 0;
         opcode = ALUControl = bitset<6>(0);
@@ -57,9 +65,9 @@ public:
         op = 0;
     }
 
-    void ReadInsMem(bitset<32> readAddress, bitset<32> mem)
+    unsigned long bitshift(bitset<32> value, int pos)
     {
-        bitset<32> Instruction = bitset<32>(mem[readAddress.to_ulong()].to_string() + mem[readAddress.to_ulong() + 1].to_string() + IMem[Read_Address.to_ulong() + 2].to_string() + IMem[Read_Address.to_ulong() + 3].to_string());
+        return ((value.to_ulong()) >> pos);
     }
 
     void print(string stage)
@@ -88,17 +96,39 @@ protected:
     bitset<16> Imm;
     bitset<32> Read_Data1, Read_Data2;
 };
-class EX : public ID
+class ID : public BaseID
+{ //! Execute Class=
+public:
+    void readInsMem(bitset<32> readAddress, vector<bitset<8>> mem)
+    {
+        InstructionMem = bitset<32>(mem[readAddress.to_ulong()].to_string() + mem[readAddress.to_ulong() + 1].to_string() + mem[readAddress.to_ulong() + 2].to_string() + mem[readAddress.to_ulong() + 3].to_string());
+    }
+    bool isEnd()
+    {
+        return (InstructionMem == bitset<32>(4294967295)); //* 2^32
+    }
+    void controlCalculations()
+    {
+        opcode = bitset<6>(bitshift(InstructionMem, 26));
+        if (opcode.to_ulong() == 0) //* R-type with opcode 000000
+        {
+        }
+    }
+
+private:
+    bitset<32> InstructionMem;
+};
+class EX : public BaseID
 { //! Execute Class=
 public:
 private:
 };
-class MEM : public ID
+class MEM : public BaseID
 { //! Memory Access Class
 public:
 private:
 };
-class WB : public ID
+class WB : public BaseID
 { //! Write Back Class
 public:
 private:
@@ -138,7 +168,6 @@ public:
 private:
 protected:
 };
-
 void ClearFiles()
 {
     remove("OutputTest.txt");
@@ -147,41 +176,87 @@ void ClearFiles()
 class InstructionMem
 {
 public:
-    InstructionMem()
+    InstructionMem() // TODO change to read words
+    {
+        ifstream imem(imemfile);
+        int i = 0;
+        string str;
+        mem.resize(memorysize);
+        if (mode)
+        {
+            int i = 0;
+            if (imem.is_open())
+            {
+                while (imem >> str)
+                {
+                    if (str.size())
+                    {
+                        str.erase(std::remove(str.begin(), str.end(), ','), str.end());
+                        cout << str << endl;
+                        memA.push_back(str);
+                    }
+                }
+                cout << "\x1B[94mInstruction Memory Loaded\033[0m" << endl;
+            }
+            else
+            {
+                cout << "\x1B[91mInstruction Memory Load failed\033[0m" << endl;
+            }
+        }
+        else
+        {
+            if (imem.is_open())
+            {
+                cout << "\x1B[94mInstruction Memory Loaded\033[0m" << endl;
+                while (getline(imem, str))
+                {
+                    mem[i] = bitset<8>(str);
+                    i++;
+                }
+            }
+            else
+                cout << "\x1B[91mInstruction Memory Load failed\033[0m" << endl;
+        }
+    }
+    vector<bitset<8>> outMem()
+    {
+        return mem;
+    }
+    vector<string> outMemA()
+    {
+        return memA;
+    }
+
+private:
+    vector<bitset<8>> mem;
+    vector<string> memA;
+};
+class DataMem
+{
+public:
+    DataMem() // TODO change to read words
     {
         mem.resize(memorysize);
-        ifstream imem;
+        ifstream dmem;
         string line;
         int i = 0;
-        imem.open("imem.txt>");
-        if (imem.is_open())
+        dmem.open(imemfile);
+        if (dmem.is_open())
         {
-            while (getline(imem, line))
+            cout << "\x1B[94mData Memory Loaded\033[0m" << endl;
+            while (getline(dmem, line))
             {
                 mem[i] = bitset<8>(line);
                 i++;
             }
         }
+        else
+            cout << "\x1B[91mData Memory Load failed\033[0m" << endl;
     }
 
 private:
     vector<bitset<8>> mem;
 };
-class DataMem
-{
-public:
-    DataMem()
-    {
-    }
-
-private:
-    vector<bitset<8>> mem;
-};
-
-unsigned long bitshift(bitset<32> value, int pos)
-{
-    return ((value.to_ulong()) >> pos);
-}
 
 int main()
 {
@@ -191,7 +266,8 @@ int main()
     stateClass state, nextState;
     int loop = 0;
     bool op = 1;
-    InstructionMem Imem;
+    InstructionMem IMEM;
+    DataMem DMEM;
     //! MainCycle
 
     while (op)
@@ -219,7 +295,14 @@ int main()
         nextState.D.op = state.F.op;
         if (state.F.op)
         {
-            nextState.StoreInstructions();
+            nextState.D.readInsMem(state.F.PCOut(), IMEM.outMem());
+            nextState.D.controlCalculations();
+            if (nextState.D.isEnd())
+            {
+                nextState.F.op = nextState.D.op = 0;
+            }
+            else
+                nextState.F.countUp(4);
         }
 
         loop++;
@@ -230,7 +313,6 @@ int main()
         {
             op = 0;
         }
-        op = 0;
     }
     return 0;
 }
