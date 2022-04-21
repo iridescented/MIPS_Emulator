@@ -4,12 +4,14 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
+#include <sstream>
 using namespace std;
 
 #define memorysize 1000
 bool mode = 1;  //* 0-binary mode, 1-assembly mode
 bool debug = 1; //* Enables Debug push
-string imemfile = "imem.txt";
+string imemfile = "imem.mip";
 string dmemfile = "dmem.txt";
 
 class IF
@@ -115,7 +117,12 @@ public:
         }
     }
 
+    void readInsMem2()
+    {
+    }
+
 private:
+    unordered_map<string, bitset<32>> bitfields;
     bitset<32> InstructionMem;
 };
 class EX : public BaseID
@@ -182,54 +189,52 @@ public:
         int i = 0;
         string str;
         mem.resize(memorysize);
-        if (mode)
+        int i = 0;
+        if (imem.is_open())
         {
-            int i = 0;
-            if (imem.is_open())
+            while (getline(imem, str))
             {
-                while (imem >> str)
+                str = str.substr(0, str.find("#", 0));
+                if (str.size())
                 {
-                    if (str.size())
-                    {
-                        str.erase(std::remove(str.begin(), str.end(), ','), str.end());
-                        cout << str << endl;
-                        memA.push_back(str);
-                    }
+                    // str.erase(std::remove(str.begin(), str.end(), ','), str.end());
+                    mem.push_back(str);
                 }
-                cout << "\x1B[94mInstruction Memory Loaded\033[0m" << endl;
             }
-            else
+            for (i = 0; i < mem.size(); i++)
             {
-                cout << "\x1B[91mInstruction Memory Load failed\033[0m" << endl;
+                cout << i << ": " << mem[i] << endl;
             }
+            cout << "\n\x1B[94mInstruction Memory Loaded\033[0m" << endl;
         }
         else
         {
-            if (imem.is_open())
-            {
-                cout << "\x1B[94mInstruction Memory Loaded\033[0m" << endl;
-                while (getline(imem, str))
-                {
-                    mem[i] = bitset<8>(str);
-                    i++;
-                }
-            }
-            else
-                cout << "\x1B[91mInstruction Memory Load failed\033[0m" << endl;
+            cout << "\n\x1B[91mInstruction Memory Load failed\033[0m" << endl;
         }
     }
-    vector<bitset<8>> outMem()
+
+    vector<bitset<32>> InsMemConv(int i)
+    {
+        switch ()
+    }
+    vector<string> outMem()
     {
         return mem;
     }
-    vector<string> outMemA()
-    {
-        return memA;
-    }
 
 private:
-    vector<bitset<8>> mem;
-    vector<string> memA;
+    vector<string> mem;
+    enum functionsenum
+    {
+        add,
+        addi,
+        sub,
+        j,
+        jr,
+        beq
+    };
+    unordered_map<string, int> functions = {{"add", 0}, {"addi", 1}, {"sub", 2}, {"j", 3}, {"jr", 4}, {"beq", 5}};
+    vector<bitset<6>> opcodelib = {0, 8, 0, 2, 0, 4};
 };
 class DataMem
 {
@@ -238,15 +243,15 @@ public:
     {
         mem.resize(memorysize);
         ifstream dmem;
-        string line;
+        string str;
         int i = 0;
         dmem.open(imemfile);
         if (dmem.is_open())
         {
             cout << "\x1B[94mData Memory Loaded\033[0m" << endl;
-            while (getline(dmem, line))
+            while (getline(dmem, str))
             {
-                mem[i] = bitset<8>(line);
+                // mem[i] = bitset<8>(str);
                 i++;
             }
         }
@@ -295,14 +300,14 @@ int main()
         nextState.D.op = state.F.op;
         if (state.F.op)
         {
-            nextState.D.readInsMem(state.F.PCOut(), IMEM.outMem());
-            nextState.D.controlCalculations();
-            if (nextState.D.isEnd())
-            {
-                nextState.F.op = nextState.D.op = 0;
-            }
-            else
-                nextState.F.countUp(4);
+            // nextState.D.readInsMem(state.F.PCOut(), IMEM.outMem());
+            // nextState.D.controlCalculations();
+            // if (nextState.D.isEnd())
+            // {
+            //     nextState.F.op = nextState.D.op = 0;
+            // }
+            // else
+            //     nextState.F.countUp(4);
         }
 
         loop++;
@@ -313,6 +318,7 @@ int main()
         {
             op = 0;
         }
+        op = 0;
     }
     return 0;
 }

@@ -1,10 +1,22 @@
-mult:
-add   $v1, $0, $0   # init to 0
-loopstart:
-beq   $a0, $0, fin
-add   $v1, $v1, $a1
-addi  $a0, $a0, -1
-j     loopstart
-fin:           
-jr    $ra
+main:    
+	addi $a1, $zero, 15
+	j mult
+	jr $ra
 
+
+#multiplication code
+mult:
+	add   $v1, $zero, $zero   # init to 0
+
+loopstart:
+	beq   $a0, $a1, fin
+	add   $v1, $v1, $a1
+	addi  $a0, $a0, 1
+	j     loopstart
+
+fin:           
+  	jr  $ra
+
+	  #how to store mult location (dmem) and how to remember where stored
+	  #how to remember where is return address
+	  #priority of code 
