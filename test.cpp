@@ -8,6 +8,8 @@
 #include <unordered_map>
 using namespace std;
 
+unordered_map<string, bitset<32>> pointer;
+
 void stringbyword()
 {
     string str = "add $t0, $t1, $a0";
@@ -41,9 +43,39 @@ void opchain()
     cout << final << endl;
 }
 
+void unorderedmaptest()
+{
+    unordered_map<string, int> functions = {{"add", 0}, {"addi", 1}, {"sub", 2}, {"j", 3}, {"jr", 4}, {"beq", 5}};
+    cout << functions["addi"];
+}
 int main()
 {
     system("cls");
-    stringbyword();
+    ifstream imem("imem.mip");
+    string str;
+    int counter = 0;
+    if (imem.is_open())
+    {
+        while (getline(imem, str))
+        {
+            if (str.find(":") != string::npos)
+            {
+                cout << counter << " - " << str << endl;
+                str = str.substr(0, str.find(":", 0));
+                pointer[str] = 4194304 + counter * 4; //* 4194304 = (hex)0x00400000
+            }
+            else
+                counter++;
+        }
+    }
+    cout << endl
+         << endl;
+    for (auto x : pointer)
+        cout << hex << x.second.to_ulong() << ": ~ " << x.first << endl;
+    cout << endl
+         << endl
+         << endl
+         << hex
+         << pointer["gae"].to_ulong();
     return 0;
 }

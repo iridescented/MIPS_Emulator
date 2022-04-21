@@ -1,0 +1,76 @@
+- Why classes? I dont get what are classes even used for, 
+registers are just 32 bits memory are 8 bits, usually classes cuz one thing as multiple
+variables to be stored in that class but registers are just a single int array 32 bits wide.
+Why not just used functions instead of classes?
+Ans: DOnt have to use classes at all, only benefit is that its object oriented and can be scaled
+
+- How many instructions needed?
+ans: bare minimum to carry out showcase program (the squaring of all integers from 0 to 200)
+
+- Do we need to convert entire intructions to binary or just?
+ans: Dont have to OPERATE on the instructions in binary HOWEVER have to OUTPUT MEMORY AND REGISTER ADDRESSES AND CONTENTS IN BINARY/HEX (up to you which format(bin/hex)
+but hex is more compact), different vectors used for intruction memory and data memory
+NOTE: data memory ALWAYS starts with 0x10010000 and instruction memory: 0x00400000
+
+1st instruction in instruction memory:
+address:
+0x00400000
+0x00400001
+0x00400002
+0x00400003
+
+2nd instruction:
+0x00400004
+0x00400005
+0x00400006
+0x00400007
+
+- How to seperate out the instructions and different addresses?
+ans: Use unordered map maybe
+
+- Are kernels used?
+ans: NO
+
+- Are stacks used?
+ans: Even if stacks are implemented, only affects the assembly code (stack pointer register stuff), not the cpp compiler code
+- Do you have to implement signed, unsigned operations?
+ans: dont HAVE to but YOU CAN
+- How many classes needed, do we use inheritance?
+ans: no need inheritance for shiettt
+
+
+
+#OOP (Object oriented programing method)
+instMemory.fetch();
+
+
+#Functional
+IF_ID = fetch(PC)
+PC + 4; //moves to next instruction (prepping for next instruc)
+ID_EX = decode(IR)
+EX_MEM = alu_ex(CS)
+WB = memory(EX_MEM)
+write_back(WB)
+//left side are holding registers for pipeline, right side are functions that output and update the holding register structs
+
+
+
+
+#State machine case next_state:
+5 states, each state repeats the entire functional format in eachs tate but each state dealing with a different instruction
+e.g:
+IF_ID[n] = fetch(PC)
+PC[n+1]; //moves to next instruction (prepping for next instruc)
+ID_EX = decode(IR)
+EX_MEM = alu_ex(CS)
+WB = memory(EX_MEM)
+write_back(WB)
+
+*To get at least
+
+fetch(PC)
+{
+
+next_state = DECODE
+
+}
