@@ -9,6 +9,8 @@
 using namespace std;
 
 unordered_map<string, bitset<32>> pointer;
+unordered_map<string, bitset<32>> functions = {{"add", 0}, {"addi", 1}, {"sub", 2}, {"j", 3}, {"jr", 4}, {"beq", 5}};
+unordered_map<string, int> registerlib = {{"$zero", 0}, {"$at", 1}, {"$v0", 2}, {"$v1", 3}, {"$a0", 4}, {"$a1", 5}, {"$a2", 6}, {"$a3", 7}, {"$t0", 8}, {"$t1", 9}, {"$t2", 10}, {"$t3", 11}, {"$t4", 12}, {"$t5", 13}, {"$t6", 14}, {"$t7", 15}, {"$s0", 16}, {"$s1", 17}, {"$s2", 18}, {"$s3", 19}, {"$s4", 20}, {"$s5", 21}, {"$s6", 22}, {"$s7", 23}, {"$t8", 24}, {"$t9", 25}, {"$k0", 26}, {"$k1", 27}, {"$gp", 28}, {"$sp", 29}, {"$fp", 30}, {"$ra", 31}};
 
 void stringbyword()
 {
@@ -48,9 +50,9 @@ void unorderedmaptest()
     unordered_map<string, int> functions = {{"add", 0}, {"addi", 1}, {"sub", 2}, {"j", 3}, {"jr", 4}, {"beq", 5}};
     cout << functions["addi"];
 }
-int main()
+
+void readpointer()
 {
-    system("cls");
     ifstream imem("imem.mip");
     string str;
     int counter = 0;
@@ -77,5 +79,59 @@ int main()
          << endl
          << hex
          << pointer["gae"].to_ulong();
+}
+
+void bitshifting()
+{
+
+    system("cls");
+    bitset<8> value = 142; // 10001110
+    bitset<4> final = value.to_ulong() >> 2;
+    cout << value << endl
+         << "  " << final << endl;
+}
+
+void squares()
+{
+    int storage[200];
+    int a1 = 1;                      //*Addi
+    int a2 = 0;                      //*Addi
+    storage[0] = a2;                 //*sw
+    for (int a3 = 1; a3 < 201; a3++) //*beq
+    {
+        cout << a1 << ":" << a2 << endl;
+        a2 += a1;         //*add
+        storage[a3] = a2; //*sw
+        a1 = a1 + 2;      //*Addi
+    }
+    cout << a1 - 1 << ":" << a2 << endl;
+}
+
+void squares2()
+{
+    int storage[200];
+    int a1 = 1;                      //*Addi
+    int a2 = 0;                      //*Addi
+    storage[0] = a2;                 //*sw
+    for (int a3 = 1; a3 < 201; a3++) //*beq
+    {
+        cout << a1 << ":" << a2 << endl;
+        a2 += a1;         //*add
+        storage[a3] = a2; //*sw
+        a1 = a1 + 2;      //*Addi
+    }
+    cout << a1 - 1 << ":" << a2 << endl;
+}
+
+class gae
+{
+public:
+    bitset<32> test = 4294967295;
+};
+int main()
+{
+    system("cls");
+    gae gaee;
+    cout << gaee.test[4];
     return 0;
 }
