@@ -23,11 +23,6 @@ int squareOf(int n)
         return (cache[n]);
     }
 }
-a1 = a1 + a2 - 1;
-a2 += 2;
-
-a1 = a1 + a2 - 1;
-a1 = a1 + a2 - 1;
 
 int main()
 {

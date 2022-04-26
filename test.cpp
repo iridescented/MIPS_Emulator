@@ -94,17 +94,13 @@ void bitshifting()
 void squares()
 {
     int storage[200];
-    int a1 = 1;                      //*Addi
-    int a2 = 0;                      //*Addi
-    storage[0] = a2;                 //*sw
-    for (int a3 = 1; a3 < 201; a3++) //*beq
+    int a2 = 0;                        //*Addi
+    storage[0] = a2;                   //*sw
+    for (int a1 = 1; a1 < 401; a1 + 2) //*beq
     {
-        cout << a1 << ":" << a2 << endl;
-        a2 += a1;         //*add
-        storage[a3] = a2; //*sw
-        a1 = a1 + 2;      //*Addi
+        a2 += a1;             //*add
+        storage[a1 / 2] = a2; //*sw
     }
-    cout << a1 - 1 << ":" << a2 << endl;
 }
 
 void squares2()
@@ -123,15 +119,8 @@ void squares2()
     cout << a1 - 1 << ":" << a2 << endl;
 }
 
-class gae
-{
-public:
-    bitset<32> test = 4294967295;
-};
 int main()
 {
     system("cls");
-    gae gaee;
-    cout << gaee.test[4];
     return 0;
 }

@@ -19,6 +19,8 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "iomanip": "cpp",
-        "sstream": "cpp"
+        "sstream": "cpp",
+        "initializer_list": "cpp",
+        "xlocale": "cpp"
     }
 }

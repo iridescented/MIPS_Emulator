@@ -12,28 +12,34 @@ using namespace std;
 #define memorysize 1000
 #define insmemstart 4194304
 #define datamemstart 268500992
+#define eoim 4294967295
 bool mode = 1; //* 0-binary mode, 1-assembly mode
-int debug = 0; //* Enables Debug push
-vector<bitset<32>> registers;
+int debug = 6; //* Enables Debug push
 string imemfile = "imem.s";
-string dmemfile = "dmem.txt";
+string dmemfile = "dmem.s";
+string RED = "\x1B[91m\x1B[40m";
+string DEF = "\x1B[37m\x1B[40m";
+/************************  GLOBAL VARIABLES ************************/
+bitset<32> PC; //* Program Counter
+vector<bitset<32>> registers;
+vector<bitset<32>> datamem;
+bitset<32> nopv = (eoim - 1);
 unordered_map<string, bitset<32>> pointer;
-string error = "\x1B[91mERROR\n";
 /************************ FUNCTIONS & CLASSES ************************/
 void ClearFiles();
 
 class IF
 { //! Fetch Class
 public:
-    bool op = 1; //* Operational state
-    IF() {}
+    IF() { PC = insmemstart; }
+    int op = 1; //* Operational state
     void countUp(int inc)
     {
         PC = PC.to_ulong() + inc;
     }
     void print()
     {
-        ofstream file("OutputTest.txt", std::ios_base::app); // https://www.delftstack.com/howto/cpp/how-to-append-text-to-a-file-in-cpp/
+        ofstream file("Outputs/OutputTest.txt", std::ios_base::app); // https://www.delftstack.com/howto/cpp/how-to-append-text-to-a-file-in-cpp/
         if (file.is_open())
         {
             file << "~~~~Fetch Stage~~~~" << endl;
@@ -42,7 +48,7 @@ public:
                  << endl;
         }
         else
-            cout << "\nOutputTest.txt failed to open!";
+            cout << "\nOutputs/OutputTest.txt failed to open!";
         file.close();
     }
     bitset<32> PCOut()
@@ -51,7 +57,6 @@ public:
     }
 
 private:
-    bitset<32> PC = insmemstart; //* Program Counter
 };
 struct IDControl
 { //? Control Structure to read opcode
@@ -61,15 +66,18 @@ struct IDControl
 struct RegStruct
 {
     IDControl Ctrl;
-    bitset<6> opcode = 0, ALUControl = 0;
+    bool zeroflag = 0;
+    bitset<6> opcode = 0, funct = 0;
+    bitset<4> ALUControl = 0;
     bitset<5> Rs = 0, Rt = 0, Write_Reg = 0, Shamt = 0;
     bitset<16> Imm = 0;
-    bitset<32> Read_Data1 = 0, Read_Data2 = 0, ALUOut = 0, Imm_se = 0;
+    bitset<26> JumpAddress = 0;
+    bitset<32> Read_Data1 = 0, Read_Data2 = 0, ALUOut = 0, Imm_se = 0, AddALU = 0, PC = 0, DMEM_Read_Data = 0;
 };
 class BaseID
 { //! Base Class
 public:
-    bool op = 0; //* Operational state
+    int op = 0; //* Operational state
     BaseID()
     {
         R.Ctrl.RegDst = R.Ctrl.Jump = R.Ctrl.Branch = R.Ctrl.MemRead = R.Ctrl.MemToReg = R.Ctrl.MemWrite = R.Ctrl.ALUSrc = R.Ctrl.RegWrite = 0;
@@ -77,7 +85,7 @@ public:
     }
     void print(string stage)
     {
-        ofstream file("OutputTest.txt", std::ios_base::app); // https://www.delftstack.com/howto/cpp/how-to-append-text-to-a-file-in-cpp/
+        ofstream file("Outputs/OutputTest.txt", std::ios_base::app); // https://www.delftstack.com/howto/cpp/how-to-append-text-to-a-file-in-cpp/
         if (file.is_open())
         {
             file << "~~~~" << stage << " Stage~~~~" << endl;
@@ -91,7 +99,7 @@ public:
                  << endl;
         }
         else
-            cout << "\nOutputTest.txt failed to open!";
+            cout << "\nOutputs/OutputTest.txt failed to open!";
         file.close();
     }
     RegStruct outReg()
@@ -112,10 +120,15 @@ public:
     void readInsMem(bitset<32> readAddress, vector<bitset<32>> mem)
     {
         InstructionMem = bitset<32>(mem[readAddress.to_ulong()]);
+        R.PC = (readAddress.to_ulong() * 4 + insmemstart) + 4;
     }
     bool isEnd()
     {
-        return (InstructionMem == bitset<32>(4294967295)); //* 2^32
+        return (InstructionMem == bitset<32>(eoim)); //* 2^32
+    }
+    bool isnop()
+    {
+        return (InstructionMem == bitset<32>(nopv)); //* 2^32
     }
     void opcodetoctrl()
     {
@@ -130,7 +143,7 @@ public:
     }
     void signextend()
     {
-        R.Imm_se = (R.Imm[15]) ? R.Imm.to_ulong() : R.Imm.to_ulong();
+        R.Imm_se = (R.Imm[15]) ? (65535 << 16) + R.Imm.to_ulong() : R.Imm.to_ulong();
     }
     void controlCalculations()
     {
@@ -139,14 +152,18 @@ public:
         opcodetoctrl();
         R.Rs = InstructionMem.to_ulong() >> 21;
         R.Rt = InstructionMem.to_ulong() >> 16;
-        R.Write_Reg = InstructionMem.to_ulong() >> 11;
-        R.Shamt = (R.Ctrl.RegDst) ? InstructionMem.to_ulong() >> 6 : R.Rt;
+        R.Write_Reg = (R.Ctrl.RegDst) ? InstructionMem.to_ulong() >> 11 : R.Rt;
+        R.Shamt = InstructionMem.to_ulong() >> 6;
         R.Imm = InstructionMem.to_ulong();
+        R.funct = InstructionMem.to_ulong();
         R.ALUControl = InstructionMem.to_ulong();
         //*calculating jump value (only used if jump is enabled)
         R.ALUOut = (R.Imm[15]) ? 4294901760 + R.Imm.to_ulong() : R.Imm.to_ulong(); //* if negative, 4294901760 = 11111111111111110000000000000000
         R.Read_Data1 = registers[R.Rs.to_ulong()];                                 //*Read from registers for Rs and Rt
         R.Read_Data2 = registers[R.Rt.to_ulong()];
+        // cout << RED << "Read Datas from: " << R.Rs.to_ulong() << " and " << R.Rt.to_ulong() << endl;
+        // cout << "Datas: " << R.Read_Data1 << " : " << R.Read_Data2 << DEF << endl;
+        R.JumpAddress = InstructionMem.to_ulong();
         signextend();
         /*
         switch (opcode.to_ulong())
@@ -235,16 +252,79 @@ private:
 class EX : public BaseID
 { //! Execute Class=
 public:
+    bitset<3> ALUControl()
+    {
+        bitset<4> func = (R.funct.to_ulong());
+        bitset<3> op;
+        op[0] = (R.Ctrl.ALUOp[1] & (func[0] | func[3]));         //* op3 - Rightmostvalue
+        op[1] = !(R.Ctrl.ALUOp[1] & func[2]);                    //* op2
+        op[2] = (R.Ctrl.ALUOp[0] | (R.Ctrl.ALUOp[1] & func[1])); //* op1
+        return op;
+    }
+    void ALU()
+    {
+        bitset<32> ALUInputMux = (!R.Ctrl.ALUSrc) ? R.Imm_se : R.Read_Data2;
+        switch (ALUControl().to_ulong())
+        {
+        case 0: //* and function
+            R.ALUOut = R.Read_Data1.to_ulong() & ALUInputMux.to_ulong();
+            break;
+        case 1: //* or function
+            R.ALUOut = R.Read_Data1.to_ulong() | ALUInputMux.to_ulong();
+            break;
+        case 2: //* add function
+            R.ALUOut = R.Read_Data1.to_ulong() + ALUInputMux.to_ulong();
+            break;
+        case 6: //* sub function
+            R.ALUOut = R.Read_Data1.to_ulong() - ALUInputMux.to_ulong();
+            break;
+        case 7: //* slt function
+            R.ALUOut = (R.Read_Data1.to_ulong() < ALUInputMux.to_ulong()) ? 1 : 0;
+            break;
+        case 12: //* nor function
+            R.ALUOut = !(R.Read_Data1.to_ulong() | ALUInputMux.to_ulong());
+            break;
+        }
+        R.zeroflag = (R.ALUOut == 0) ? 1 : 0;
+        AddALU();
+    }
+    void AddALU()
+    {
+        R.AddALU = R.PC.to_ulong() + R.Imm_se.to_ulong() << 2;
+    }
+
 private:
 };
 class MEM : public BaseID
 { //! Memory Access Class
 public:
+    void DMEM() //* INPUT Address from ALU, WriteData from ReadData2, OUTPUT ReadData
+    {
+        if (R.Ctrl.MemRead)
+        {
+            R.DMEM_Read_Data = datamem[(R.ALUOut.to_ulong() - insmemstart) / 4];
+        }
+        if (R.Ctrl.MemWrite)
+        {
+            datamem[(R.ALUOut.to_ulong() - insmemstart) / 4] = R.Read_Data2;
+        }
+    }
+    void AddALUMux()
+    {
+        bitset<32> PCTemp = (R.zeroflag & R.Ctrl.Branch) ? R.AddALU : PC;
+        PC = (R.Ctrl.Jump) ? (R.JumpAddress.to_ulong() << 2) : PCTemp;
+    }
+
 private:
 };
 class WB : public BaseID
 { //! Write Back Class
 public:
+    void MtoReg()
+    {
+        registers[R.Write_Reg.to_ulong()] = (R.Ctrl.MemToReg) ? R.DMEM_Read_Data : R.ALUOut;
+    }
+
 private:
 };
 
@@ -271,7 +351,6 @@ public:
         file.close();
         switch (debug)
         {
-        default:
         case 1:
             F.print();
             break;
@@ -288,6 +367,7 @@ public:
             W.print("Write Back");
             break;
         case 6:
+        default:
             F.print();
             D.print("Decode");
             E.print("Execute");
@@ -295,13 +375,19 @@ public:
             W.print("Write Back");
             break;
         }
+    }
+    template <typename T>
+    void printregisters(T loop)
+    {
         ofstream file2("Outputs/OutputReg.txt", std::ios_base::app);
         if (file2.is_open())
         {
             file2 << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
             file2 << "~~~~~~~~~~\n|Loop: " << loop << " |\n~~~~~~~~~~\n";
-            for (auto i : registers)
-                file2 << i << endl;
+            for (int i = 0; i < 32; i++)
+            {
+                file2 << setfill(' ') << setw(4) << register_pos[i] << ": 0x" << setfill('0') << setw(8) << hex << registers[i].to_ulong() << endl;
+            }
             file2 << endl;
         }
         else
@@ -310,6 +396,8 @@ public:
     }
 
 private:
+    vector<string> register_pos = {"zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "s8", "ra"};
+
 protected:
 };
 class InstructionMem
@@ -344,9 +432,7 @@ public:
             cout << "~~~~~~~~~~~~~~~~~~~~~" << endl;
         }
         else
-        {
             cout << "\n\x1B[91mPointer Memory Load failed\033[0m" << endl;
-        }
     }
     void readInstructions()
     {
@@ -432,8 +518,9 @@ public:
                 iss >> word;
                 buffer << bitset<5>(registerlib[word]) << bitset<21>(8);
                 break;
+            case nop:
             default:
-
+                buffer << (nopv << 6);
                 break;
             }
             membin.push_back(bitset<32>(buffer.str()));
@@ -463,37 +550,39 @@ private:
         jr,
         beq,
         sw,
-        lw
+        lw,
+        nop
     };
-    unordered_map<string, int> functions = {{"add", 0}, {"addi", 1}, {"sub", 2}, {"j", 3}, {"jr", 4}, {"beq", 5}, {"sw", 6}, {"lw", 7}};
+    unordered_map<string, int> functions = {{"add", 0}, {"addi", 1}, {"sub", 2}, {"j", 3}, {"jr", 4}, {"beq", 5}, {"sw", 6}, {"lw", 7}, {"nop", 8}};
     unordered_map<string, int> registerlib = {{"$zero", 0}, {"$at", 1}, {"$v0", 2}, {"$v1", 3}, {"$a0", 4}, {"$a1", 5}, {"$a2", 6}, {"$a3", 7}, {"$t0", 8}, {"$t1", 9}, {"$t2", 10}, {"$t3", 11}, {"$t4", 12}, {"$t5", 13}, {"$t6", 14}, {"$t7", 15}, {"$s0", 16}, {"$s1", 17}, {"$s2", 18}, {"$s3", 19}, {"$s4", 20}, {"$s5", 21}, {"$s6", 22}, {"$s7", 23}, {"$t8", 24}, {"$t9", 25}, {"$k0", 26}, {"$k1", 27}, {"$gp", 28}, {"$sp", 29}, {"$fp", 30}, {"$ra", 31}};
-    vector<bitset<6>> opcodelib = {0, 8, 0, 2, 0, 4, 43, 35};
+    vector<bitset<6>> opcodelib = {0, 8, 0, 2, 0, 4, 43, 35, 63};
 };
 class DataMem
 {
 public:
-    DataMem() // TODO change to read words
+    DataMem()
     {
-        mem.resize(memorysize);
-        ifstream dmem;
+        datamem.resize(memorysize);
+        ifstream dmem(dmemfile);
         string str;
         int i = 0;
-        dmem.open(imemfile);
         if (dmem.is_open())
         {
-            cout << "\x1B[94mData Memory Loaded\033[0m" << endl;
+            cout << "\x1B[94mData Memory Loaded\033[0m" << endl
+                 << endl;
             while (getline(dmem, str))
             {
-                // mem[i] = bitset<8>(str);
+                datamem[i] = bitset<32>(str);
+                cout << str << endl;
                 i++;
             }
         }
         else
-            cout << "\x1B[91mData Memory Load failed\033[0m" << endl;
+            cout << "\x1B[91mData Memory Load failed\033[0m" << endl
+                 << endl;
     }
 
 private:
-    vector<bitset<8>> mem;
 };
 
 // MIPS Fields
@@ -525,61 +614,69 @@ int main()
 {
     ClearFiles();
     //! Create State and Initialize
-    stateClass state, nextState;
     registers.resize(32);
+    fill(registers.begin(), registers.end(), 0);
+    stateClass state, nextState;
     int loop = 0;
     bool op = 1;
     InstructionMem IMEM;
     DataMem DMEM;
-    state.print(0);
     //! MainCycle
-
+    state.print(loop);
     cout << "\x1B[94mMain Cycle Initialized\033[0m" << endl;
     while (op)
     {
+        nextState.D.readInsMem((state.F.PCOut().to_ulong() - insmemstart) / 4, IMEM.outMem());
+        if (nextState.D.isEnd())
+            nextState.F.op = 0;
+        if (nextState.D.isnop())
+            state.F.op = 8;
+
         cout << state.F.PCOut().to_ulong() << ": " << state.F.op << state.D.op << state.E.op << state.M.op << state.W.op << endl;
         // WriteBack
-        if (state.W.op)
+        if (state.W.op == 1)
         {
+            state.W.MtoReg();
         }
         // MemoryAccess
         nextState.W.op = state.M.op;
-        if (state.M.op)
+        if (state.M.op == 1)
         {
+            state.M.AddALUMux();
+            state.M.DMEM();
+            nextState.W.inReg(state.M.outReg());
         }
         // Execute
         nextState.M.op = state.E.op;
-        if (state.E.op)
+        if (state.E.op == 1)
         {
+            state.E.ALU();
+            nextState.M.inReg(state.E.outReg());
         }
         // Decode
         nextState.E.op = state.D.op;
-        if (state.D.op)
+        if (state.D.op == 1)
         {
-            nextState.D = state.D;
-            nextState.D.controlCalculations();
+            state.D.controlCalculations();
             nextState.E.inReg(state.D.outReg());
         }
         // Fetch
         nextState.D.op = state.F.op;
         if (state.F.op)
-        {
-            nextState.D.readInsMem((state.F.PCOut().to_ulong() - insmemstart) / 4, IMEM.outMem());
-            if (nextState.D.isEnd())
-            {
-                nextState.F.op = nextState.D.op = 0;
-            }
-            else
-                nextState.F.countUp(4);
-        }
+            nextState.F.countUp(4);
 
         loop++;
-        state = nextState;
         state.print(loop);
+        state.printregisters(loop);
+        state = nextState;
 
-        if (!state.F.op && !state.D.op && !state.E.op && !state.M.op && !state.W.op)
+        if (!state.F.op & !state.D.op & !state.E.op & !state.M.op & !state.W.op)
             op = 0;
     }
+    loop++;
+    state.W.op = 0;
+    state.print(loop);
+    state.printregisters("Final");
     return 0;
 }
 
