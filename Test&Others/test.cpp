@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 using namespace std;
 
 unordered_map<string, bitset<32>> pointer;
@@ -119,8 +120,61 @@ void squares2()
     cout << a1 - 1 << ":" << a2 << endl;
 }
 
+vector<string> mem;
+int insmemstart = 4194304;
+void instructionmemupdate()
+{
+    vector<char> illegalvalues = {',', '\t'};
+    unordered_set<string> twolinesback;
+    unordered_set<string> onelineback;
+    string imemfile = "imem.s";
+    ifstream imem(imemfile);
+    string str, tempstr;
+    int counter = 0;
+    if (imem.is_open())
+    {
+        while (getline(imem >> ws, str))
+        {
+            str = str.substr(0, str.find("#", 0));
+            cout << str << endl;
+            if (str.size() && str.find(":") == string::npos)
+            {
+                for (char i : illegalvalues)
+                    str.erase(remove(str.begin(), str.end(), i), str.end());
+                mem.push_back(str);
+                if ((str.substr(0, 1) == "j") || (str.substr(0, 3) == "beq"))
+                {
+                    mem.push_back("nop");
+                    counter++;
+                }
+            }
+            else if (str.find(":") != string::npos)
+            {
+                str = str.substr(0, str.find(":", 0));
+                pointer[str] = insmemstart + 4 * counter; //* 4194304 = (hex)0x00400000
+                mem.push_back("nop");
+            }
+            counter++;
+        }
+    }
+    else
+        cout << "\n\x1B[91mInstruction Memory Load failed\033[0m" << endl;
+}
+
 int main()
 {
     system("cls");
+    instructionmemupdate();
+    cout << "\n\x1B[94mInstruction Memory Loaded\033[0m" << endl;
+    cout << "~InstructionMemory~~~~~~~~" << endl;
+    for (int i = 0; i < mem.size(); i++)
+        cout << insmemstart + i * 4 << ": " << mem[i] << endl;
+    cout << "POINTERS" << endl
+         << endl;
+    for (auto const &pair : pointer)
+    {
+        cout << pair.second.to_ulong() << ": " << pair.first << endl;
+    }
+    cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
     return 0;
 }
